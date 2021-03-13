@@ -1,7 +1,8 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const fileUpload = require('express-fileUpload')
+const fs = require('fs-extra');
+const fileUpload = require('express-fileUpload');
 const MongoClient = require('mongodb').MongoClient;
 require('dotenv').config();
 
@@ -9,14 +10,14 @@ require('dotenv').config();
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.rbbqn.mongodb.net/${process.env.DB_NAME}?retryWrites=true&w=majority`;
 
 
-const app = express()
+const app = express();
 app.use(bodyParser.json());
 app.use(cors());
 app.use(express.static('doctors'));
 app.use(fileUpload());
 
 
-const port = 5000
+const port = 5000;
 
 app.get('/', (req, res) => {
   res.send('Hello World!')
@@ -38,19 +39,19 @@ client.connect(err => {
 
   app.post('/appointmenstByDate', (req, res) => {
     const date = req.body;
-        const email = req.body.email;
-        doctorCollection.find({ email: email })
-            .toArray((err, doctors) => {
-                const filter = { date: date.date }
-                if (doctors.length === 0) {
-                    filter.email = email;
-                }
-                appointmentCollection.find(filter)
-                    .toArray((err, documents) => {
-                        console.log(email, date.date, doctors, documents)
-                        res.send(documents);
-                    })
-            })
+    const email = req.body.email;
+    doctorCollection.find({ email: email })
+      .toArray((err, doctors) => {
+        const filter = { date: date.date }
+        if (doctors.length === 0) {
+          filter.email = email;
+        }
+        appointmentCollection.find(filter)
+          .toArray((err, documents) => {
+            console.log(email, date.date, doctors, documents)
+            res.send(documents);
+          })
+      })
   })
 
   app.get('/appointments', (req, res) => {
@@ -64,21 +65,38 @@ client.connect(err => {
     const file = req.files.file;
     const name = req.body.name;
     const email = req.body.email;
-    console.log(name, email, file);
-    file.mv(`${__dirname}/doctors/${file.name}`, err => {
-      if (err) {
-        console.log(err);
-        return res.status(500).send({ msg: 'Upload image' })
+    // const filePath = `${__dirname}/doctors/${file.name}`;
 
-      }
+    // file.mv(filePath, err => {
+    //   if (err) {
+    //     console.log(err);
+    //     res.status(500).send({ msg: 'Failed to Upload image' })
 
-      doctorCollection.insertOne({ name, email, img: file.name })
-        .then(result => {
-          res.send(result.insertedCount > 0)
-        })
-      // return res.send({name: file.name, path: `/${file.name}`});
+    //   }
+    const newImg = file.data;
+    const encImg = newImg.toString('base64');
 
-    })
+    var image = {
+      contentType: file.mimetype,
+      size: file.size,
+      img: Buffer.from(encImg, 'base64')
+    };
+
+    doctorCollection.insertOne({ name, email, image })
+      .then(result => {
+        // fs.remove(filePath, error=>{
+        //   if (error) {
+        //     console.log(error)
+        //     res.status(500).send({ msg: 'Failed to Upload image' })
+        //   };
+        res.send(result.insertedCount > 0)
+
+        // })
+
+      })
+    // return res.send({name: file.name, path: `/${file.name}`});
+
+    // })
   })
   app.get('/doctors', (req, res) => {
     doctorCollection.find({})
@@ -87,12 +105,12 @@ client.connect(err => {
       })
   });
   app.post('/isDoctor', (req, res) => {
-        const email = req.body.email;
-        doctorCollection.find({ email: email })
-            .toArray((err, doctors) => {
-                res.send(doctors.length > 0)
-               
-            })
+    const email = req.body.email;
+    doctorCollection.find({ email: email })
+      .toArray((err, doctors) => {
+        res.send(doctors.length > 0)
+
+      })
   })
 });
 
