@@ -114,4 +114,5 @@ client.connect(err => {
   })
 });
 
-app.listen(process.env.PORT || port);
+// app.listen(process.env.PORT || port);
+app.listen( port,()=>console.log(`connected database server${port}`));
